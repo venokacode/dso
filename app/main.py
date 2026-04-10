@@ -2,13 +2,15 @@ from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from typing import List
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
+from app.auth import generate_access_token, hash_password, token_expiry, utc_now, verify_password
 from app.database import Base, engine, get_db
-from app.models import Customer, Invoice, Order, OrderItem, Product
+from app.models import Customer, Invoice, Order, OrderItem, Product, User, UserSession
 from app.schemas import (
+    AuthTokenOut,
     CustomerCreate,
     CustomerOut,
     InvoiceOut,
@@ -18,6 +20,9 @@ from app.schemas import (
     ProductCreate,
     ProductOut,
     ReceivableSummaryOut,
+    UserLogin,
+    UserOut,
+    UserRegister,
 )
 
 @asynccontextmanager
@@ -28,7 +33,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(
     title="DSO Monthly Settlement Order System",
-    description="Order management for DSO enterprise customers with monthly billing and no online payment.",
+    description="Order management for DSO enterprise customers with monthly billing, user authentication, and no online payment.",
     version="0.1.0",
     lifespan=lifespan,
 )
@@ -49,8 +54,76 @@ def health() -> dict:
     return {"status": "ok"}
 
 
+def get_current_user(
+    authorization: str | None = Header(default=None, alias="Authorization"),
+    db: Session = Depends(get_db),
+) -> User:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing or invalid Authorization header")
+    token = authorization.removeprefix("Bearer ").strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing bearer token")
+
+    session = db.query(UserSession).filter(UserSession.access_token == token).first()
+    if not session:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    if session.expires_at < utc_now():
+        raise HTTPException(status_code=401, detail="Token expired")
+
+    user = db.query(User).filter(User.id == session.user_id).first()
+    if not user or not user.is_active:
+        raise HTTPException(status_code=401, detail="User is inactive")
+    return user
+
+
+def build_auth_response(user: User, db: Session) -> AuthTokenOut:
+    token = generate_access_token()
+    expires_at = token_expiry(hours=24)
+    session = UserSession(user_id=user.id, access_token=token, expires_at=expires_at)
+    db.add(session)
+    db.commit()
+    db.refresh(user)
+    return AuthTokenOut(access_token=token, expires_at=expires_at, user=user)
+
+
+@app.post("/auth/register", response_model=AuthTokenOut)
+def register_user(payload: UserRegister, db: Session = Depends(get_db)) -> AuthTokenOut:
+    existing = db.query(User).filter(User.email == payload.email.lower()).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Email already registered")
+    user = User(
+        email=payload.email.lower(),
+        full_name=payload.full_name,
+        password_hash=hash_password(payload.password),
+        is_active=True,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return build_auth_response(user, db)
+
+
+@app.post("/auth/login", response_model=AuthTokenOut)
+def login_user(payload: UserLogin, db: Session = Depends(get_db)) -> AuthTokenOut:
+    user = db.query(User).filter(User.email == payload.email.lower()).first()
+    if not user or not verify_password(payload.password, user.password_hash):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    if not user.is_active:
+        raise HTTPException(status_code=401, detail="User is inactive")
+    return build_auth_response(user, db)
+
+
+@app.get("/auth/me", response_model=UserOut)
+def me(current_user: User = Depends(get_current_user)) -> User:
+    return current_user
+
+
 @app.post("/customers", response_model=CustomerOut)
-def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> Customer:
+def create_customer(
+    payload: CustomerCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Customer:
     existing = db.query(Customer).filter(Customer.name == payload.name).first()
     if existing:
         raise HTTPException(status_code=409, detail="Customer name already exists")
@@ -67,12 +140,16 @@ def create_customer(payload: CustomerCreate, db: Session = Depends(get_db)) -> C
 
 
 @app.get("/customers", response_model=List[CustomerOut])
-def list_customers(db: Session = Depends(get_db)) -> List[Customer]:
+def list_customers(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> List[Customer]:
     return db.query(Customer).order_by(Customer.id.desc()).all()
 
 
 @app.post("/products", response_model=ProductOut)
-def create_product(payload: ProductCreate, db: Session = Depends(get_db)) -> Product:
+def create_product(
+    payload: ProductCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Product:
     existing = db.query(Product).filter(Product.sku == payload.sku).first()
     if existing:
         raise HTTPException(status_code=409, detail="Product SKU already exists")
@@ -89,12 +166,16 @@ def create_product(payload: ProductCreate, db: Session = Depends(get_db)) -> Pro
 
 
 @app.get("/products", response_model=List[ProductOut])
-def list_products(db: Session = Depends(get_db)) -> List[Product]:
+def list_products(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> List[Product]:
     return db.query(Product).order_by(Product.id.desc()).all()
 
 
 @app.post("/orders", response_model=OrderOut)
-def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> Order:
+def create_order(
+    payload: OrderCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Order:
     customer = db.query(Customer).filter(Customer.id == payload.customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -132,12 +213,16 @@ def create_order(payload: OrderCreate, db: Session = Depends(get_db)) -> Order:
 
 
 @app.get("/orders", response_model=List[OrderOut])
-def list_orders(db: Session = Depends(get_db)) -> List[Order]:
+def list_orders(db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> List[Order]:
     return db.query(Order).order_by(Order.id.desc()).all()
 
 
 @app.post("/orders/{order_id}/confirm", response_model=OrderOut)
-def confirm_order(order_id: int, db: Session = Depends(get_db)) -> Order:
+def confirm_order(
+    order_id: int,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Order:
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -150,7 +235,7 @@ def confirm_order(order_id: int, db: Session = Depends(get_db)) -> Order:
 
 
 @app.post("/orders/{order_id}/ship", response_model=OrderOut)
-def ship_order(order_id: int, db: Session = Depends(get_db)) -> Order:
+def ship_order(order_id: int, db: Session = Depends(get_db), _: User = Depends(get_current_user)) -> Order:
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
@@ -163,7 +248,12 @@ def ship_order(order_id: int, db: Session = Depends(get_db)) -> Order:
 
 
 @app.post("/billing/monthly/{customer_id}/{billing_month}", response_model=InvoiceOut)
-def create_monthly_invoice(customer_id: int, billing_month: str, db: Session = Depends(get_db)) -> Invoice:
+def create_monthly_invoice(
+    customer_id: int,
+    billing_month: str,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Invoice:
     customer = db.query(Customer).filter(Customer.id == customer_id).first()
     if not customer:
         raise HTTPException(status_code=404, detail="Customer not found")
@@ -217,6 +307,7 @@ def list_invoices(
     customer_id: int | None = Query(default=None),
     status: str | None = Query(default=None),
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ) -> List[Invoice]:
     query = db.query(Invoice)
     if customer_id is not None:
@@ -231,6 +322,7 @@ def settle_invoice(
     invoice_id: int,
     payload: MarkInvoiceSettledIn,
     db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
 ) -> Invoice:
     invoice = db.query(Invoice).filter(Invoice.id == invoice_id).first()
     if not invoice:
@@ -247,7 +339,10 @@ def settle_invoice(
 
 
 @app.get("/reports/receivables", response_model=List[ReceivableSummaryOut])
-def receivable_summary(db: Session = Depends(get_db)) -> List[ReceivableSummaryOut]:
+def receivable_summary(
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> List[ReceivableSummaryOut]:
     rows = (
         db.query(
             Customer.id.label("customer_id"),

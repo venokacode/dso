@@ -4,6 +4,34 @@ from typing import List, Optional
 from pydantic import BaseModel, ConfigDict, Field
 
 
+class UserRegister(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    full_name: str = Field(min_length=2, max_length=120)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserLogin(BaseModel):
+    email: str = Field(min_length=5, max_length=200)
+    password: str = Field(min_length=8, max_length=128)
+
+
+class UserOut(BaseModel):
+    id: int
+    email: str
+    full_name: str
+    is_active: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class AuthTokenOut(BaseModel):
+    access_token: str
+    token_type: str = "bearer"
+    expires_at: datetime
+    user: UserOut
+
+
 class CustomerCreate(BaseModel):
     name: str = Field(min_length=2, max_length=120)
     contact_email: Optional[str] = None

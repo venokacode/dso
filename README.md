@@ -1,59 +1,81 @@
 # DSO Monthly Settlement Order System
 
-一个面向 DSO 大客户的订单系统（不接在线支付），支持月结开票与应收管理。
+An order management backend for DSO enterprise customers with monthly settlement.
+Online payment is intentionally out of scope.
 
-## 功能范围
+## Features
 
-- 客户管理（固定月结账期）
-- 商品管理
-- 订单流转：`draft -> confirmed -> shipped`
-- 月结开票：按客户 + 月份汇总已发货未开票订单
-- 发票结清：人工标记结清（不做支付接口）
-- 应收报表：按客户汇总未结清金额
+- User authentication (register, login, current user)
+- Customer management (monthly billing cycle)
+- Product management
+- Order workflow: `draft -> confirmed -> shipped`
+- Monthly invoicing: aggregate shipped, uninvoiced orders by customer + month
+- Manual invoice settlement (no payment gateway)
+- Accounts receivable summary by customer
 
-## 技术栈
+## Tech Stack
 
 - FastAPI
 - SQLAlchemy
-- SQLite（默认本地文件 `dso_orders.db`）
+- SQLite (default local file: `dso_orders.db`)
 
-## 快速启动
+## Quick Start
 
 ```bash
-python -m venv .venv
+python3 -m venv .venv
 source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+python3 -m pip install -r requirements.txt
+python3 -m uvicorn app.main:app --reload
 ```
 
-访问文档：
+API docs:
 
 - Swagger UI: `http://127.0.0.1:8000/docs`
 
-## 核心接口
+## Authentication
 
-- `POST /customers` 创建客户
-- `GET /customers` 客户列表
-- `POST /products` 创建商品
-- `GET /products` 商品列表
-- `POST /orders` 创建订单（草稿）
-- `GET /orders` 订单列表
-- `POST /orders/{order_id}/confirm` 确认订单
-- `POST /orders/{order_id}/ship` 发货
-- `POST /billing/monthly/{customer_id}/{billing_month}` 月结开票（`YYYY-MM`）
-- `GET /invoices` 发票列表
-- `POST /invoices/{invoice_id}/settle` 人工标记结清
-- `GET /reports/receivables` 应收汇总
+Register and get token:
 
-## 业务说明（DSO 月结）
+- `POST /auth/register`
 
-1. 订单先创建并确认，再发货。
-2. 月末按客户和月份开票，自动汇总该月**已发货且未开票**订单。
-3. 发票到期日 = 开票日 + 客户账期（默认 30 天）。
-4. 系统不处理支付，只支持财务人工标记“已结清”。
+Login and get token:
 
-## 运行测试
+- `POST /auth/login`
+
+Current user:
+
+- `GET /auth/me`
+
+Use the token in all business endpoints:
+
+```text
+Authorization: Bearer <access_token>
+```
+
+## Core Endpoints
+
+- `POST /customers`
+- `GET /customers`
+- `POST /products`
+- `GET /products`
+- `POST /orders`
+- `GET /orders`
+- `POST /orders/{order_id}/confirm`
+- `POST /orders/{order_id}/ship`
+- `POST /billing/monthly/{customer_id}/{billing_month}` (`YYYY-MM`)
+- `GET /invoices`
+- `POST /invoices/{invoice_id}/settle`
+- `GET /reports/receivables`
+
+## DSO Monthly Settlement Rules
+
+1. Create order, then confirm, then ship.
+2. Generate monthly invoice from shipped and uninvoiced orders in that month.
+3. Due date = issue date + customer credit term days (default: 30).
+4. Payment processing is not included; finance team marks invoice as settled manually.
+
+## Run Tests
 
 ```bash
-pytest -q
+python3 -m pytest -q
 ```
