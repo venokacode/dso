@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DSO 月结订单系统</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="hero">
+    <div>
+      <p class="eyebrow">Enterprise DSO Ordering</p>
+      <h1>DSO 大客户月结订单系统</h1>
+      <p class="hero-copy">
+        面向大客户的订单与对账流程，不接在线支付，支持客户档案、PO 下单、履约跟踪、月结汇总与对账单预览。
+      </p>
+    </div>
+    <div class="hero-actions">
+      <button id="seed-demo-button" class="secondary-button" type="button">恢复示例数据</button>
+      <button id="clear-data-button" class="ghost-button" type="button">清空本地数据</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="section-tag">概览</p>
+          <h2>经营看板</h2>
+        </div>
+        <label class="inline-field">
+          <span>统计月份</span>
+          <input id="dashboard-month" type="month">
+        </label>
+      </div>
+      <div id="dashboard-cards" class="stats-grid"></div>
+      <div id="dashboard-highlights" class="highlight-list"></div>
+    </section>
+
+    <div class="two-column">
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="section-tag">客户管理</p>
+            <h2>DSO 大客户档案</h2>
+          </div>
+        </div>
+        <form id="customer-form" class="form-grid">
+          <label>
+            <span>客户名称</span>
+            <input name="name" type="text" placeholder="如：华东口腔集团" required>
+          </label>
+          <label>
+            <span>客户编码</span>
+            <input name="code" type="text" placeholder="如：DSO-001" required>
+          </label>
+          <label>
+            <span>联系人</span>
+            <input name="contact" type="text" placeholder="采购负责人">
+          </label>
+          <label>
+            <span>联系电话</span>
+            <input name="phone" type="tel" placeholder="13800000000">
+          </label>
+          <label>
+            <span>账期</span>
+            <select name="creditDays">
+              <option value="30">月结 30 天</option>
+              <option value="45">月结 45 天</option>
+              <option value="60">月结 60 天</option>
+            </select>
+          </label>
+          <label>
+            <span>月结日</span>
+            <input name="settlementDay" type="number" min="1" max="31" value="25" required>
+          </label>
+          <label>
+            <span>信用额度</span>
+            <input name="creditLimit" type="number" min="0" step="0.01" placeholder="500000">
+          </label>
+          <label>
+            <span>开票抬头</span>
+            <input name="invoiceTitle" type="text" placeholder="公司全称">
+          </label>
+          <label class="full-width">
+            <span>地址</span>
+            <input name="address" type="text" placeholder="收货或对账地址">
+          </label>
+          <label class="full-width">
+            <span>备注</span>
+            <textarea name="remark" rows="3" placeholder="例如：需要 PO 号、对账单按院区拆分"></textarea>
+          </label>
+          <div class="form-actions full-width">
+            <button type="submit">新增客户</button>
+          </div>
+        </form>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>客户</th>
+                <th>联系人</th>
+                <th>账期</th>
+                <th>信用额度</th>
+                <th>月结日</th>
+                <th>备注</th>
+              </tr>
+            </thead>
+            <tbody id="customer-table-body"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-header">
+          <div>
+            <p class="section-tag">订单创建</p>
+            <h2>PO 下单</h2>
+          </div>
+        </div>
+        <form id="order-form" class="form-grid">
+          <label>
+            <span>客户</span>
+            <select name="customerId" id="order-customer-select" required></select>
+          </label>
+          <label>
+            <span>PO 号</span>
+            <input name="poNumber" type="text" placeholder="客户采购 PO" required>
+          </label>
+          <label>
+            <span>订单日期</span>
+            <input name="orderDate" type="date" required>
+          </label>
+          <label>
+            <span>交付日期</span>
+            <input name="deliveryDate" type="date" required>
+          </label>
+          <label>
+            <span>所属院区 / 部门</span>
+            <input name="department" type="text" placeholder="如：上海旗舰院">
+          </label>
+          <label>
+            <span>订单状态</span>
+            <select name="status">
+              <option value="待审核">待审核</option>
+              <option value="待履约">待履约</option>
+              <option value="履约中">履约中</option>
+              <option value="已完成">已完成</option>
+            </select>
+          </label>
+          <label class="full-width">
+            <span>订单备注</span>
+            <textarea name="notes" rows="3" placeholder="例如：需拆单配送、对账单附患者项目编号"></textarea>
+          </label>
+
+          <div class="subpanel full-width">
+            <div class="subpanel-header">
+              <h3>订单明细</h3>
+              <button id="add-item-button" class="secondary-button" type="button">新增一行</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>SKU</th>
+                    <th>品名</th>
+                    <th>规格</th>
+                    <th>数量</th>
+                    <th>单位</th>
+                    <th>未税单价</th>
+                    <th>税率 %</th>
+                    <th>操作</th>
+                  </tr>
+                </thead>
+                <tbody id="order-items-body"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <div class="form-actions full-width">
+            <span id="order-total-hint" class="muted-text"></span>
+            <button type="submit">创建订单</button>
+          </div>
+        </form>
+      </section>
+    </div>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="section-tag">订单池</p>
+          <h2>订单列表与履约状态</h2>
+        </div>
+        <div class="filter-row">
+          <label class="inline-field">
+            <span>客户</span>
+            <select id="order-filter-customer"></select>
+          </label>
+          <label class="inline-field">
+            <span>状态</span>
+            <select id="order-filter-status">
+              <option value="全部">全部</option>
+              <option value="待审核">待审核</option>
+              <option value="待履约">待履约</option>
+              <option value="履约中">履约中</option>
+              <option value="已完成">已完成</option>
+            </select>
+          </label>
+          <label class="inline-field">
+            <span>月份</span>
+            <input id="order-filter-month" type="month">
+          </label>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>订单号</th>
+              <th>客户</th>
+              <th>PO</th>
+              <th>院区</th>
+              <th>订单日期</th>
+              <th>交付日期</th>
+              <th>金额</th>
+              <th>状态</th>
+            </tr>
+          </thead>
+          <tbody id="order-table-body"></tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-header">
+        <div>
+          <p class="section-tag">月结中心</p>
+          <h2>对账与开票</h2>
+        </div>
+        <div class="filter-row">
+          <label class="inline-field">
+            <span>对账月份</span>
+            <input id="settlement-filter-month" type="month">
+          </label>
+        </div>
+      </div>
+
+      <div class="two-column">
+        <div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>客户</th>
+                  <th>月份</th>
+                  <th>订单数</th>
+                  <th>应收金额</th>
+                  <th>状态</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody id="settlement-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <aside class="statement-card">
+          <div class="statement-header">
+            <div>
+              <p class="section-tag">对账单</p>
+              <h3 id="statement-title">请选择左侧月结记录</h3>
+            </div>
+          </div>
+          <div id="statement-empty" class="empty-state">
+            选择一条月结记录后，可以在这里查看对账明细、填写发票号和回款状态。
+          </div>
+          <div id="statement-content" class="statement-content hidden">
+            <div class="statement-metrics" id="statement-metrics"></div>
+            <form id="settlement-form" class="form-grid compact-form">
+              <input id="settlement-key" type="hidden" name="settlementKey">
+              <label>
+                <span>结算状态</span>
+                <select id="settlement-status" name="status">
+                  <option value="待开票">待开票</option>
+                  <option value="已开票">已开票</option>
+                  <option value="已对账">已对账</option>
+                  <option value="已回款">已回款</option>
+                </select>
+              </label>
+              <label>
+                <span>发票号</span>
+                <input id="settlement-invoice-no" name="invoiceNo" type="text" placeholder="可选">
+              </label>
+              <label>
+                <span>到期回款日</span>
+                <input id="settlement-due-date" name="dueDate" type="date">
+              </label>
+              <label class="full-width">
+                <span>对账备注</span>
+                <textarea id="settlement-remark" name="remark" rows="3" placeholder="例如：发票需按医院主体拆分"></textarea>
+              </label>
+              <div class="form-actions full-width">
+                <button type="submit">保存月结记录</button>
+              </div>
+            </form>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>订单号</th>
+                    <th>PO 号</th>
+                    <th>订单日期</th>
+                    <th>院区</th>
+                    <th>金额</th>
+                    <th>状态</th>
+                  </tr>
+                </thead>
+                <tbody id="statement-order-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </aside>
+      </div>
+    </section>
+  </main>
+
+  <template id="order-item-row-template">
+    <tr>
+      <td><input name="sku" type="text" placeholder="SKU-001"></td>
+      <td><input name="name" type="text" placeholder="品名" required></td>
+      <td><input name="spec" type="text" placeholder="规格"></td>
+      <td><input name="quantity" type="number" min="1" step="1" value="1" required></td>
+      <td><input name="unit" type="text" placeholder="盒" value="盒"></td>
+      <td><input name="price" type="number" min="0" step="0.01" value="0" required></td>
+      <td><input name="taxRate" type="number" min="0" step="0.01" value="13"></td>
+      <td><button class="ghost-button remove-item-button" type="button">删除</button></td>
+    </tr>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>
