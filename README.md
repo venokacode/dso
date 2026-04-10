@@ -9,6 +9,7 @@ Online payment is intentionally out of scope.
 - Customer management (monthly billing cycle)
 - Product management
 - Order workflow: `draft -> confirmed -> shipped`
+- Logistics shipment records (carrier, tracking number, shipped/received status)
 - Monthly invoicing: aggregate shipped, uninvoiced orders by customer + month
 - Manual invoice settlement (no payment gateway)
 - Accounts receivable summary by customer
@@ -61,7 +62,9 @@ Authorization: Bearer <access_token>
 - `POST /orders`
 - `GET /orders`
 - `POST /orders/{order_id}/confirm`
-- `POST /orders/{order_id}/ship`
+- `POST /shipments` (create logistics shipment and mark order as shipped)
+- `GET /shipments`
+- `POST /shipments/{shipment_id}/receive`
 - `POST /billing/monthly/{customer_id}/{billing_month}` (`YYYY-MM`)
 - `GET /invoices`
 - `POST /invoices/{invoice_id}/settle`
@@ -69,7 +72,7 @@ Authorization: Bearer <access_token>
 
 ## DSO Monthly Settlement Rules
 
-1. Create order, then confirm, then ship.
+1. Create order, confirm it, then create shipment logistics record to ship.
 2. Generate monthly invoice from shipped and uninvoiced orders in that month.
 3. Due date = issue date + customer credit term days (default: 30).
 4. Payment processing is not included; finance team marks invoice as settled manually.

@@ -89,6 +89,7 @@ class Order(Base):
     customer = relationship("Customer", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     invoice = relationship("Invoice", back_populates="orders")
+    shipments = relationship("Shipment", back_populates="order", cascade="all, delete-orphan")
 
 
 class OrderItem(Base):
@@ -103,6 +104,23 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     product = relationship("Product", back_populates="order_items")
+
+
+class Shipment(Base):
+    __tablename__ = "shipments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    shipment_no = Column(String(40), nullable=False, unique=True, index=True)
+    order_id = Column(Integer, ForeignKey("orders.id"), nullable=False, index=True)
+    carrier_name = Column(String(120), nullable=False)
+    tracking_no = Column(String(120), nullable=False, unique=True, index=True)
+    shipped_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    received_at = Column(DateTime(timezone=True), nullable=True)
+    status = Column(String(20), nullable=False, default="shipped", index=True)
+    remarks = Column(String(500), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+
+    order = relationship("Order", back_populates="shipments")
 
 
 class Invoice(Base):

@@ -80,23 +80,47 @@ def test_dso_monthly_billing_flow():
     assert order["status"] == "draft"
     assert order["total_amount"] == 265.5
 
-    # 5) Confirm and ship order
+    # 5) Confirm order, then create logistics shipment record
     confirm_resp = client.post(f"/orders/{order['id']}/confirm", headers=headers)
     assert confirm_resp.status_code == 200
-    ship_resp = client.post(f"/orders/{order['id']}/ship", headers=headers)
-    assert ship_resp.status_code == 200
-    shipped_order = ship_resp.json()
-    assert shipped_order["status"] == "shipped"
+    shipment_resp = client.post(
+        "/shipments",
+        json={
+            "order_id": order["id"],
+            "carrier_name": "SF Express",
+            "tracking_no": "SF-TRACK-0001",
+            "remarks": "Main warehouse outbound",
+        },
+        headers=headers,
+    )
+    assert shipment_resp.status_code == 200
+    shipment = shipment_resp.json()
+    assert shipment["status"] == "shipped"
+    assert shipment["tracking_no"] == "SF-TRACK-0001"
 
-    # 6) Generate monthly invoice
-    billing_month = shipped_order["order_date"][:7]
+    # 6) List shipment records by order
+    shipment_list_resp = client.get(f"/shipments?order_id={order['id']}", headers=headers)
+    assert shipment_list_resp.status_code == 200
+    shipments = shipment_list_resp.json()
+    assert len(shipments) == 1
+    assert shipments[0]["id"] == shipment["id"]
+
+    # 7) Optional receiving confirmation
+    receive_resp = client.post(f"/shipments/{shipment['id']}/receive", json={"received": True}, headers=headers)
+    assert receive_resp.status_code == 200
+    received_shipment = receive_resp.json()
+    assert received_shipment["status"] == "received"
+
+    # 8) Generate monthly invoice
+    order_after_shipping = client.get("/orders", headers=headers).json()[0]
+    billing_month = order_after_shipping["order_date"][:7]
     invoice_resp = client.post(f"/billing/monthly/{customer['id']}/{billing_month}", headers=headers)
     assert invoice_resp.status_code == 200
     invoice = invoice_resp.json()
     assert invoice["status"] == "issued"
     assert invoice["total_amount"] == 265.5
 
-    # 7) Receivable report should include unsettled amount
+    # 9) Receivable report should include unsettled amount
     report_resp = client.get("/reports/receivables", headers=headers)
     assert report_resp.status_code == 200
     rows = report_resp.json()
@@ -104,7 +128,7 @@ def test_dso_monthly_billing_flow():
     assert target["total_unsettled_amount"] == 265.5
     assert target["unsettled_invoices"] == 1
 
-    # 8) Settle manually (no payment integration)
+    # 10) Settle manually (no payment integration)
     settle_resp = client.post(
         f"/invoices/{invoice['id']}/settle",
         json={"settled": True},

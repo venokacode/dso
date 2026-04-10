@@ -105,6 +105,32 @@ class OrderOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
 
+class ShipmentCreate(BaseModel):
+    order_id: int
+    carrier_name: str = Field(min_length=2, max_length=120)
+    tracking_no: str = Field(min_length=3, max_length=120)
+    remarks: Optional[str] = Field(default=None, max_length=500)
+
+
+class ShipmentMarkReceivedIn(BaseModel):
+    received: bool = True
+
+
+class ShipmentOut(BaseModel):
+    id: int
+    shipment_no: str
+    order_id: int
+    carrier_name: str
+    tracking_no: str
+    shipped_at: datetime
+    received_at: Optional[datetime]
+    status: str
+    remarks: Optional[str]
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class InvoiceOut(BaseModel):
     id: int
     invoice_no: str

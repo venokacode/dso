@@ -8,7 +8,7 @@ from sqlalchemy.orm import Session
 
 from app.auth import generate_access_token, hash_password, token_expiry, utc_now, verify_password
 from app.database import Base, engine, get_db
-from app.models import Customer, Invoice, Order, OrderItem, Product, User, UserSession
+from app.models import Customer, Invoice, Order, OrderItem, Product, Shipment, User, UserSession
 from app.schemas import (
     AuthTokenOut,
     CustomerCreate,
@@ -20,6 +20,9 @@ from app.schemas import (
     ProductCreate,
     ProductOut,
     ReceivableSummaryOut,
+    ShipmentCreate,
+    ShipmentMarkReceivedIn,
+    ShipmentOut,
     UserLogin,
     UserOut,
     UserRegister,
@@ -47,6 +50,11 @@ def _gen_order_no(db: Session) -> str:
 def _gen_invoice_no(db: Session) -> str:
     count = db.query(func.count(Invoice.id)).scalar() or 0
     return f"INV{date.today().strftime('%Y%m%d')}{count + 1:04d}"
+
+
+def _gen_shipment_no(db: Session) -> str:
+    count = db.query(func.count(Shipment.id)).scalar() or 0
+    return f"SHP{date.today().strftime('%Y%m%d')}{count + 1:04d}"
 
 
 @app.get("/health")
@@ -249,6 +257,75 @@ def ship_order(order_id: int, db: Session = Depends(get_db), _: User = Depends(g
     db.commit()
     db.refresh(order)
     return order
+
+
+@app.post("/shipments", response_model=ShipmentOut)
+def create_shipment(
+    payload: ShipmentCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Shipment:
+    order = db.query(Order).filter(Order.id == payload.order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Order not found")
+    if order.status != "confirmed":
+        raise HTTPException(status_code=400, detail="Only confirmed orders can be shipped with logistics record")
+
+    tracking = payload.tracking_no.strip()
+    existing = db.query(Shipment).filter(Shipment.tracking_no == tracking).first()
+    if existing:
+        raise HTTPException(status_code=409, detail="Tracking number already exists")
+
+    shipment = Shipment(
+        shipment_no=_gen_shipment_no(db),
+        order_id=order.id,
+        carrier_name=payload.carrier_name.strip(),
+        tracking_no=tracking,
+        remarks=payload.remarks,
+        status="shipped",
+    )
+    db.add(shipment)
+    order.status = "shipped"
+    db.commit()
+    db.refresh(shipment)
+    return shipment
+
+
+@app.get("/shipments", response_model=List[ShipmentOut])
+def list_shipments(
+    order_id: int | None = Query(default=None),
+    status: str | None = Query(default=None),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> List[Shipment]:
+    query = db.query(Shipment)
+    if order_id is not None:
+        query = query.filter(Shipment.order_id == order_id)
+    if status is not None:
+        query = query.filter(Shipment.status == status)
+    return query.order_by(Shipment.id.desc()).all()
+
+
+@app.post("/shipments/{shipment_id}/receive", response_model=ShipmentOut)
+def mark_shipment_received(
+    shipment_id: int,
+    payload: ShipmentMarkReceivedIn,
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_user),
+) -> Shipment:
+    shipment = db.query(Shipment).filter(Shipment.id == shipment_id).first()
+    if not shipment:
+        raise HTTPException(status_code=404, detail="Shipment not found")
+
+    if payload.received:
+        shipment.status = "received"
+        shipment.received_at = utc_now()
+    else:
+        shipment.status = "shipped"
+        shipment.received_at = None
+    db.commit()
+    db.refresh(shipment)
+    return shipment
 
 
 @app.post("/billing/monthly/{customer_id}/{billing_month}", response_model=InvoiceOut)
