@@ -67,7 +67,11 @@ def get_current_user(
     session = db.query(UserSession).filter(UserSession.access_token == token).first()
     if not session:
         raise HTTPException(status_code=401, detail="Invalid token")
-    if session.expires_at < utc_now():
+    expires_at = session.expires_at
+    now = utc_now()
+    if expires_at.tzinfo is None and now.tzinfo is not None:
+        now = now.replace(tzinfo=None)
+    if expires_at < now:
         raise HTTPException(status_code=401, detail="Token expired")
 
     user = db.query(User).filter(User.id == session.user_id).first()
