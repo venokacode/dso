@@ -1,0 +1,78 @@
+{% extends "base.html" %}
+
+{% block title %}订单列表 - DSO 月结订单系统{% endblock %}
+{% block header %}订单管理{% endblock %}
+{% block subtitle %}跟踪客户订单从建单、确认、发货到纳入月结的全过程。{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <div class="section-head">
+      <div>
+        <h3>全部订单</h3>
+        <p>订单进入“已发货”后即可在账期内归入月结算单。</p>
+      </div>
+      <a class="button" href="{{ url_for('new_order') }}">新建订单</a>
+    </div>
+
+    {% if orders %}
+      <table>
+        <thead>
+          <tr>
+            <th>订单号</th>
+            <th>客户</th>
+            <th>PO / 日期</th>
+            <th>明细</th>
+            <th>金额</th>
+            <th>状态</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td>
+                <strong>{{ order.order_no }}</strong><br>
+                <span class="muted">创建于 {{ order.created_at[:10] }}</span>
+              </td>
+              <td>{{ order.customer_name }}</td>
+              <td>
+                <div>PO：{{ order.po_number or '未填写' }}</div>
+                <div class="muted">下单：{{ order.order_date }}</div>
+                <div class="muted">发货：{{ order.delivery_date or '待安排' }}</div>
+              </td>
+              <td>{{ order.line_count }} 条</td>
+              <td>{{ order.total_cents|currency }}</td>
+              <td>
+                {% if order.status == 'confirmed' %}
+                  <span class="status-badge warning">{{ order_statuses[order.status] }}</span>
+                {% elif order.status in ['monthly_billed', 'closed'] %}
+                  <span class="status-badge success">{{ order_statuses[order.status] }}</span>
+                {% else %}
+                  <span class="status-badge">{{ order_statuses[order.status] }}</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if order.status in ['monthly_billed', 'closed'] %}
+                  <span class="muted">已进入月结流程</span>
+                {% else %}
+                  <form class="inline" method="post" action="{{ url_for('update_order', order_id=order.id) }}">
+                    <select name="status">
+                      {% for status_value, status_label in order_statuses.items() %}
+                        {% if status_value in ['draft', 'confirmed', 'shipped'] %}
+                          <option value="{{ status_value }}" {% if status_value == order.status %}selected{% endif %}>{{ status_label }}</option>
+                        {% endif %}
+                      {% endfor %}
+                    </select>
+                    <button class="secondary" type="submit">更新</button>
+                  </form>
+                {% endif %}
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">还没有订单，点击右上角开始创建。</div>
+    {% endif %}
+  </section>
+{% endblock %}

@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+
+{% block title %}客户管理 - DSO 月结订单系统{% endblock %}
+{% block header %}客户管理{% endblock %}
+{% block subtitle %}维护 DSO 大客户档案、授信额度和月结账期设置。{% endblock %}
+
+{% block content %}
+  <div class="grid grid-2">
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h3>新增客户</h3>
+          <p>建议客户编码和 ERP / CRM 一致，方便对账和导出。</p>
+        </div>
+      </div>
+      <form class="stack" method="post">
+        <div class="form-grid">
+          <label>
+            客户名称
+            <input type="text" name="name" placeholder="例如：华南口腔采购联盟" required>
+          </label>
+          <label>
+            客户编码
+            <input type="text" name="account_code" placeholder="例如：SOUTH-DSO" required>
+          </label>
+          <label>
+            商务联系人
+            <input type="text" name="contact_name" placeholder="例如：李佳" required>
+          </label>
+          <label>
+            商务邮箱
+            <input type="email" name="contact_email" placeholder="bd@example.com" required>
+          </label>
+          <label>
+            财务邮箱
+            <input type="email" name="billing_email" placeholder="finance@example.com" required>
+          </label>
+          <label>
+            账期天数
+            <input type="number" name="settlement_due_days" min="1" value="30" required>
+          </label>
+          <label style="grid-column: span 2;">
+            授信额度（元）
+            <input type="number" name="credit_limit" min="0" step="0.01" value="0" required>
+          </label>
+        </div>
+        <label>
+          备注
+          <textarea name="notes" placeholder="例如：PO 必填、支持统一对账邮箱、需要每月 5 号前出结算单。"></textarea>
+        </label>
+        <button type="submit">保存客户</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h3>客户列表</h3>
+          <p>当前已录入的 DSO 大客户。</p>
+        </div>
+      </div>
+      {% if customers %}
+        <table>
+          <thead>
+            <tr>
+              <th>客户</th>
+              <th>联系人</th>
+              <th>账期</th>
+              <th>授信额度</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for customer in customers %}
+              <tr>
+                <td>
+                  <strong>{{ customer.name }}</strong><br>
+                  <span class="muted">{{ customer.account_code }}</span>
+                </td>
+                <td>
+                  {{ customer.contact_name }}<br>
+                  <span class="muted">{{ customer.contact_email }}</span><br>
+                  <span class="muted">财务：{{ customer.billing_email }}</span>
+                </td>
+                <td>{{ customer.settlement_due_days }} 天</td>
+                <td>{{ customer.credit_limit_cents|currency }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">还没有客户，先创建一个 DSO 客户档案。</div>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

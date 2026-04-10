@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+
+{% block title %}商品目录 - DSO 月结订单系统{% endblock %}
+{% block header %}商品目录{% endblock %}
+{% block subtitle %}维护标准 SKU 和挂牌价，订单里可以直接带入并按客户策略覆盖单价。{% endblock %}
+
+{% block content %}
+  <div class="grid grid-2">
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h3>新增商品</h3>
+          <p>适合录入常用耗材、器械包或服务项目。</p>
+        </div>
+      </div>
+      <form class="stack" method="post">
+        <div class="form-grid">
+          <label>
+            SKU
+            <input type="text" name="sku" placeholder="例如：SCAN-TIP" required>
+          </label>
+          <label>
+            商品名称
+            <input type="text" name="name" placeholder="例如：口扫探头耗材" required>
+          </label>
+          <label>
+            单位
+            <input type="text" name="unit" placeholder="例如：盒 / 套 / 支" required>
+          </label>
+          <label>
+            标准单价（元）
+            <input type="number" name="unit_price" min="0" step="0.01" placeholder="0.00" required>
+          </label>
+        </div>
+        <button type="submit">保存商品</button>
+      </form>
+    </section>
+
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h3>目录清单</h3>
+          <p>订单新建页可直接选择并自动带出名称、单位和价格。</p>
+        </div>
+      </div>
+      {% if products %}
+        <table>
+          <thead>
+            <tr>
+              <th>SKU</th>
+              <th>商品名称</th>
+              <th>单位</th>
+              <th>标准单价</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for product in products %}
+              <tr>
+                <td><strong>{{ product.sku }}</strong></td>
+                <td>{{ product.name }}</td>
+                <td>{{ product.unit }}</td>
+                <td>{{ product.unit_price_cents|currency }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      {% else %}
+        <div class="empty-state">暂时没有商品目录，先补齐常用品类。</div>
+      {% endif %}
+    </section>
+  </div>
+{% endblock %}

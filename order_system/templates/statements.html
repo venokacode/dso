@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+
+{% block title %}月结算单 - DSO 月结订单系统{% endblock %}
+{% block header %}月结算单{% endblock %}
+{% block subtitle %}按客户和账期归集已发货订单，生成财务对账和催款依据。{% endblock %}
+
+{% block content %}
+  <div class="grid grid-2">
+    <section class="card">
+      <div class="section-head">
+        <div>
+          <h3>生成结算单</h3>
+          <p>一个客户每个账期保留一张结算单，草稿态可以持续追加新发货订单。</p>
+        </div>
+      </div>
+      <form class="stack" method="post" action="{{ url_for('generate_statement') }}">
+        <label>
+          客户
+          <select name="customer_id" required>
+            <option value="">请选择客户</option>
+            {% for customer in customers %}
+              <option value="{{ customer.id }}">{{ customer.name }} · {{ customer.account_code }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <label>
+          账期
+          <input type="month" name="period_month" value="{{ current_month }}" required>
+        </label>
+        <button type="submit">生成 / 追加结算单</button>
+      </form>
+    </section>
+
+    <section class="card stack">
+      <div class="section-head">
+        <div>
+          <h3>月结规则建议</h3>
+          <p>适合 DSO 大客户的常见流程配置。</p>
+        </div>
+      </div>
+      <ul style="margin: 0; padding-left: 18px; line-height: 1.8;">
+        <li>只允许“已发货”订单进入结算单，确保应收和履约一致。</li>
+        <li>结算单发送后不再追加订单，避免财务版本混乱。</li>
+        <li>结清后自动把关联订单收口到“已结清”。</li>
+        <li>导出 CSV 给财务或客户采购对账，不接支付能力。</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="card" style="margin-top: 20px;">
+    <div class="section-head">
+      <div>
+        <h3>结算单列表</h3>
+        <p>点击结算单号查看详情、导出和推进状态。</p>
+      </div>
+    </div>
+
+    {% if statements %}
+      <table>
+        <thead>
+          <tr>
+            <th>结算单号</th>
+            <th>客户</th>
+            <th>账期</th>
+            <th>到期日</th>
+            <th>状态</th>
+            <th>总额</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for statement in statements %}
+            <tr>
+              <td>
+                <a href="{{ url_for('statement_detail', statement_id=statement.id) }}"><strong>{{ statement.statement_no }}</strong></a><br>
+                <span class="muted">{{ statement.customer_code }}</span>
+              </td>
+              <td>{{ statement.customer_name }}</td>
+              <td>{{ statement.period_month }}</td>
+              <td>{{ statement.due_date }}</td>
+              <td>
+                {% if statement.status == 'draft' %}
+                  <span class="status-badge">{{ statement_statuses[statement.status] }}</span>
+                {% elif statement.status == 'sent' %}
+                  <span class="status-badge warning">{{ statement_statuses[statement.status] }}</span>
+                {% else %}
+                  <span class="status-badge success">{{ statement_statuses[statement.status] }}</span>
+                {% endif %}
+              </td>
+              <td>{{ statement.total_amount_cents|currency }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">还没有结算单，发货后的订单可以按月生成。</div>
+    {% endif %}
+  </section>
+{% endblock %}

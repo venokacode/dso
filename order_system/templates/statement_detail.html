@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}{{ statement.statement_no }} - 月结算单{% endblock %}
+{% block header %}结算单详情{% endblock %}
+{% block subtitle %}查看账期订单清单、推进发送 / 结清状态，并导出财务对账文件。{% endblock %}
+
+{% block content %}
+  <div class="grid grid-2" style="margin-bottom: 20px;">
+    <section class="card stack">
+      <div class="section-head" style="margin-bottom: 0;">
+        <div>
+          <h3>{{ statement.statement_no }}</h3>
+          <p>{{ statement.customer_name }} · {{ statement.customer_code }}</p>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div>
+          <div class="muted">账期</div>
+          <div><strong>{{ statement.period_month }}</strong></div>
+        </div>
+        <div>
+          <div class="muted">到期日</div>
+          <div><strong>{{ statement.due_date }}</strong></div>
+        </div>
+        <div>
+          <div class="muted">财务邮箱</div>
+          <div><strong>{{ statement.billing_email }}</strong></div>
+        </div>
+        <div>
+          <div class="muted">应收金额</div>
+          <div><strong>{{ statement.total_amount_cents|currency }}</strong></div>
+        </div>
+      </div>
+      <div>
+        {% if statement.status == 'draft' %}
+          <span class="status-badge">{{ statement_statuses[statement.status] }}</span>
+        {% elif statement.status == 'sent' %}
+          <span class="status-badge warning">{{ statement_statuses[statement.status] }}</span>
+        {% else %}
+          <span class="status-badge success">{{ statement_statuses[statement.status] }}</span>
+        {% endif %}
+      </div>
+    </section>
+
+    <section class="card stack">
+      <div class="section-head" style="margin-bottom: 0;">
+        <div>
+          <h3>结算动作</h3>
+          <p>草稿可追加订单，发送后锁定内容，结清后关闭关联订单。</p>
+        </div>
+      </div>
+      <form class="stack" method="post" action="{{ url_for('set_statement_status', statement_id=statement.id) }}">
+        <label>
+          更新状态
+          <select name="status">
+            {% for status_value, status_label in statement_statuses.items() %}
+              <option value="{{ status_value }}" {% if status_value == statement.status %}selected{% endif %}>{{ status_label }}</option>
+            {% endfor %}
+          </select>
+        </label>
+        <button type="submit">保存状态</button>
+      </form>
+      <a class="button secondary" href="{{ url_for('export_statement', statement_id=statement.id) }}">导出 CSV</a>
+      <a class="button ghost" href="{{ url_for('statements') }}">返回结算单列表</a>
+    </section>
+  </div>
+
+  <section class="card">
+    <div class="section-head">
+      <div>
+        <h3>账期内订单</h3>
+        <p>以下订单已被归入本结算单，金额用于财务对账和客户回款跟踪。</p>
+      </div>
+    </div>
+    {% if orders %}
+      <table>
+        <thead>
+          <tr>
+            <th>订单号</th>
+            <th>PO 号</th>
+            <th>订单日期</th>
+            <th>发货日期</th>
+            <th>状态</th>
+            <th>金额</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for order in orders %}
+            <tr>
+              <td><strong>{{ order.order_no }}</strong></td>
+              <td>{{ order.po_number or '未填写' }}</td>
+              <td>{{ order.order_date }}</td>
+              <td>{{ order.delivery_date or '未填写' }}</td>
+              <td>{{ order_statuses[order.status] }}</td>
+              <td>{{ order.total_cents|currency }}</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <div class="empty-state">这张结算单还没有订单。</div>
+    {% endif %}
+  </section>
+{% endblock %}

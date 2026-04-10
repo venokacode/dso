@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}DSO 月结订单系统{% endblock %}</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --bg: #f4f7fb;
+        --card: #ffffff;
+        --text: #132238;
+        --muted: #5b6b80;
+        --primary: #2663eb;
+        --primary-soft: #e9f0ff;
+        --success: #1c9c5a;
+        --warning: #d97706;
+        --danger: #d6336c;
+        --border: #d6deea;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+
+      .app-shell {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        min-height: 100vh;
+      }
+
+      .sidebar {
+        background: #0f172a;
+        color: #edf2ff;
+        padding: 28px 22px;
+      }
+
+      .brand {
+        margin-bottom: 28px;
+      }
+
+      .brand h1 {
+        margin: 0 0 8px;
+        font-size: 22px;
+      }
+
+      .brand p {
+        margin: 0;
+        color: #b8c4df;
+        line-height: 1.5;
+        font-size: 14px;
+      }
+
+      .nav-links {
+        display: grid;
+        gap: 10px;
+      }
+
+      .nav-link {
+        padding: 12px 14px;
+        border-radius: 10px;
+        color: #dbe6ff;
+        transition: background 0.2s ease;
+      }
+
+      .nav-link:hover,
+      .nav-link.active {
+        background: rgba(255, 255, 255, 0.1);
+      }
+
+      .main {
+        padding: 32px;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 24px;
+        gap: 16px;
+      }
+
+      .page-title h2 {
+        margin: 0 0 6px;
+        font-size: 30px;
+      }
+
+      .page-title p {
+        margin: 0;
+        color: var(--muted);
+      }
+
+      .tag {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: var(--primary-soft);
+        color: var(--primary);
+        font-weight: 700;
+        font-size: 13px;
+      }
+
+      .flash-list {
+        display: grid;
+        gap: 12px;
+        margin-bottom: 24px;
+      }
+
+      .flash {
+        padding: 14px 16px;
+        border-radius: 12px;
+        font-size: 14px;
+        border: 1px solid transparent;
+        background: var(--card);
+      }
+
+      .flash.success {
+        border-color: #c7efd9;
+        background: #effcf4;
+        color: #156b3d;
+      }
+
+      .flash.error {
+        border-color: #f6c4d8;
+        background: #fff0f6;
+        color: #9f1239;
+      }
+
+      .card {
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        padding: 22px;
+        box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
+      }
+
+      .grid {
+        display: grid;
+        gap: 20px;
+      }
+
+      .grid-2 {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .grid-4 {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+      }
+
+      .metric-value {
+        font-size: 28px;
+        font-weight: 700;
+        margin-top: 8px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .section-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        gap: 12px;
+      }
+
+      .section-head h3 {
+        margin: 0;
+        font-size: 20px;
+      }
+
+      .section-head p {
+        margin: 4px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+      }
+
+      th,
+      td {
+        padding: 12px 10px;
+        border-bottom: 1px solid #e6edf7;
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        font-size: 13px;
+        color: var(--muted);
+        font-weight: 700;
+      }
+
+      td {
+        font-size: 14px;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        padding: 6px 10px;
+        border-radius: 999px;
+        background: #eef3ff;
+        color: #1d4ed8;
+        font-weight: 700;
+        font-size: 12px;
+      }
+
+      .status-badge.warning {
+        background: #fff7ed;
+        color: var(--warning);
+      }
+
+      .status-badge.success {
+        background: #ecfdf3;
+        color: var(--success);
+      }
+
+      .status-badge.dark {
+        background: #eff6ff;
+        color: #0f172a;
+      }
+
+      .button,
+      button,
+      input[type="submit"] {
+        border: 0;
+        border-radius: 10px;
+        padding: 10px 14px;
+        background: var(--primary);
+        color: #fff;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .button.secondary,
+      button.secondary {
+        background: #e5ebf5;
+        color: #0f172a;
+      }
+
+      .button.ghost,
+      button.ghost {
+        background: transparent;
+        border: 1px solid var(--border);
+        color: var(--text);
+      }
+
+      form.inline {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      label {
+        display: grid;
+        gap: 8px;
+        font-size: 14px;
+        color: var(--muted);
+      }
+
+      input,
+      select,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 11px 12px;
+        font: inherit;
+        color: var(--text);
+        background: #fff;
+      }
+
+      textarea {
+        min-height: 96px;
+        resize: vertical;
+      }
+
+      .form-grid {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+      }
+
+      .form-grid-3 {
+        display: grid;
+        gap: 16px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .muted {
+        color: var(--muted);
+      }
+
+      .empty-state {
+        padding: 28px;
+        border: 1px dashed var(--border);
+        border-radius: 14px;
+        text-align: center;
+        color: var(--muted);
+      }
+
+      .stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .list-inline {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+
+      @media (max-width: 1080px) {
+        .app-shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          padding-bottom: 16px;
+        }
+
+        .grid-4,
+        .grid-2,
+        .form-grid,
+        .form-grid-3 {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <h1>DSO 月结订单</h1>
+          <p>面向大客户的下单、发货和月结对账系统，不集成在线支付。</p>
+        </div>
+        <nav class="nav-links">
+          <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{{ url_for('dashboard') }}">概览</a>
+          <a class="nav-link {% if request.path.startswith('/customers') %}active{% endif %}" href="{{ url_for('customers') }}">客户</a>
+          <a class="nav-link {% if request.path.startswith('/products') %}active{% endif %}" href="{{ url_for('products') }}">商品目录</a>
+          <a class="nav-link {% if request.path.startswith('/orders') %}active{% endif %}" href="{{ url_for('orders') }}">订单</a>
+          <a class="nav-link {% if request.path.startswith('/statements') %}active{% endif %}" href="{{ url_for('statements') }}">月结算单</a>
+        </nav>
+      </aside>
+      <main class="main">
+        <div class="topbar">
+          <div class="page-title">
+            <h2>{% block header %}DSO 月结订单系统{% endblock %}</h2>
+            <p>{% block subtitle %}支持大客户下单、发货跟踪、月结对账和 CSV 导出。{% endblock %}</p>
+          </div>
+          <span class="tag">无支付集成 / 月结账期</span>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <div class="flash-list">
+              {% for category, message in messages %}
+                <div class="flash {{ category }}">{{ message }}</div>
+              {% endfor %}
+            </div>
+          {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </body>
+</html>
