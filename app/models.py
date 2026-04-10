@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import enum
-from datetime import date, datetime
+from datetime import UTC, date, datetime
 from decimal import Decimal
 
 from sqlalchemy import Boolean, Date, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
@@ -35,7 +35,11 @@ class Customer(Base):
         nullable=False,
         default=CustomerStatus.ACTIVE,
     )
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
 
     orders: Mapped[list["Order"]] = relationship(back_populates="customer")
 
@@ -48,7 +52,11 @@ class Product(Base):
     name: Mapped[str] = mapped_column(String(255), nullable=False)
     unit_price: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     active: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
 
 
 class Order(Base):
@@ -65,7 +73,11 @@ class Order(Base):
     )
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     note: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        nullable=False,
+        default=lambda: datetime.now(UTC),
+    )
 
     customer: Mapped[Customer] = relationship(back_populates="orders")
     items: Mapped[list["OrderItem"]] = relationship(
