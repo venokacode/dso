@@ -1,0 +1,123 @@
+{% extends "base.html" %}
+
+{% block title %}订单管理 - DSO 月结订单系统{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+    <div class="card">
+        <h2>录入订单</h2>
+        <p class="muted">订单交付后可纳入对应月份的月结对账单。</p>
+        <form method="post">
+            <div class="form-row">
+                <label>
+                    客户
+                    <select name="customer_id" required>
+                        <option value="">请选择客户</option>
+                        {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.name }}（{{ customer.customer_code }}）</option>
+                        {% endfor %}
+                    </select>
+                </label>
+                <label>
+                    项目 / 商品
+                    <input type="text" name="item_name" placeholder="例如：隐形矫治器批量采购" required>
+                </label>
+            </div>
+            <div class="form-row">
+                <label>
+                    数量
+                    <input type="number" step="0.01" min="0.01" name="quantity" value="1" required>
+                </label>
+                <label>
+                    单价
+                    <input type="number" step="0.01" min="0" name="unit_price" value="0" required>
+                </label>
+            </div>
+            <div class="form-row">
+                <label>
+                    下单日期
+                    <input type="date" name="order_date" value="{{ today }}" required>
+                </label>
+                <label>
+                    交付日期
+                    <input type="date" name="delivery_date">
+                </label>
+            </div>
+            <div class="form-row">
+                <label>
+                    订单状态
+                    <select name="status">
+                        {% for value, label in order_status_labels.items() %}
+                            <option value="{{ value }}" {% if value == 'pending' %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                    </select>
+                </label>
+            </div>
+            <label>
+                备注
+                <textarea name="remarks" placeholder="可记录门店拆分、交付批次或特殊条款。"></textarea>
+            </label>
+            <button type="submit">保存订单</button>
+        </form>
+    </div>
+
+    <div class="card">
+        <div class="toolbar">
+            <div>
+                <h2>订单列表</h2>
+                <div class="muted">关注哪些订单已经交付、是否已并入月结账单。</div>
+            </div>
+            <span class="tag">{{ orders|length }} 笔订单</span>
+        </div>
+        {% if orders %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>客户</th>
+                            <th>项目</th>
+                            <th>日期</th>
+                            <th>金额</th>
+                            <th>订单状态</th>
+                            <th>月结状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in orders %}
+                            <tr>
+                                <td>
+                                    <strong>{{ order.customer_name }}</strong><br>
+                                    <span class="muted">{{ order.customer_code }}</span>
+                                </td>
+                                <td>
+                                    {{ order.item_name }}<br>
+                                    <span class="muted">数量：{{ order.quantity }}</span>
+                                </td>
+                                <td>
+                                    下单：{{ order.order_date }}<br>
+                                    <span class="muted">交付：{{ order.delivery_date or '未交付' }}</span>
+                                </td>
+                                <td>{{ format_money(order.quantity * order.unit_price) }}</td>
+                                <td><span class="tag">{{ order_status_labels[order.status] }}</span></td>
+                                <td>
+                                    {% if order.statement_id %}
+                                        <a class="tag success" href="{{ url_for('statement_detail', statement_id=order.statement_id) }}">
+                                            {{ order.billing_month }} / {{ statement_status_labels[order.statement_status] }}
+                                        </a>
+                                    {% elif order.status == 'delivered' %}
+                                        <span class="tag warning">待出账</span>
+                                    {% else %}
+                                        <span class="tag">未满足出账条件</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty">还没有订单，先录入一笔已确认或已交付订单。</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

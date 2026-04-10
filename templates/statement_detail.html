@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+
+{% block title %}对账单详情 - DSO 月结订单系统{% endblock %}
+
+{% block content %}
+<div class="grid grid-2">
+    <div class="card">
+        <div class="toolbar">
+            <div>
+                <h2>{{ statement.billing_month }} 月结对账单</h2>
+                <div class="muted">{{ statement.customer_name }}（{{ statement.customer_code }}）</div>
+            </div>
+            <span class="tag success">{{ statement_status_labels[statement.status] }}</span>
+        </div>
+
+        <div class="detail-list">
+            <div class="detail-row">
+                <span class="muted">客户联系人</span>
+                <strong>{{ statement.contact_name or "未填写" }}</strong>
+            </div>
+            <div class="detail-row">
+                <span class="muted">联系邮箱</span>
+                <strong>{{ statement.contact_email or "未填写" }}</strong>
+            </div>
+            <div class="detail-row">
+                <span class="muted">账期说明</span>
+                <strong>{{ statement.credit_terms }}</strong>
+            </div>
+            <div class="detail-row">
+                <span class="muted">账单总额</span>
+                <strong>{{ format_money(statement.total_amount) }}</strong>
+            </div>
+            <div class="detail-row">
+                <span class="muted">生成时间</span>
+                <strong>{{ statement.created_at }}</strong>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2>账单流转</h2>
+        <p class="muted">该系统不接支付，仅跟踪月结账单是否已发送、是否线下结清。</p>
+        <form method="post" action="{{ url_for('update_statement_status', statement_id=statement.id) }}">
+            <label>
+                更新账单状态
+                <select name="status">
+                    {% for value, label in statement_status_labels.items() %}
+                        <option value="{{ value }}" {% if value == statement.status %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <button type="submit">保存状态</button>
+        </form>
+    </div>
+</div>
+
+<div class="card" style="margin-top: 16px;">
+    <div class="toolbar">
+        <div>
+            <h2>账单明细</h2>
+            <div class="muted">本账单包含的已交付订单明细。</div>
+        </div>
+        <a class="button secondary" href="{{ url_for('statements') }}">返回账单列表</a>
+    </div>
+
+    {% if line_items %}
+        <div class="table-wrap">
+            <table>
+                <thead>
+                    <tr>
+                        <th>订单 ID</th>
+                        <th>项目 / 商品</th>
+                        <th>数量</th>
+                        <th>单价</th>
+                        <th>交付日期</th>
+                        <th>金额</th>
+                        <th>备注</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in line_items %}
+                        <tr>
+                            <td>#{{ item.id }}</td>
+                            <td>{{ item.item_name }}</td>
+                            <td>{{ item.quantity }}</td>
+                            <td>{{ format_money(item.unit_price) }}</td>
+                            <td>{{ item.delivery_date or "未填写" }}</td>
+                            <td>{{ format_money(item.quantity * item.unit_price) }}</td>
+                            <td>{{ item.remarks or "-" }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty">该账单目前没有明细订单。</div>
+    {% endif %}
+</div>
+{% endblock %}

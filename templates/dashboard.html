@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+
+{% block title %}总览 - DSO 月结订单系统{% endblock %}
+
+{% block content %}
+<div class="grid grid-4" style="margin-bottom: 16px;">
+    <div class="card">
+        <div class="muted">客户数</div>
+        <div class="metric-value">{{ metrics.customer_count }}</div>
+        <div class="muted">已录入的 DSO 大客户</div>
+    </div>
+    <div class="card">
+        <div class="muted">有效订单数</div>
+        <div class="metric-value">{{ metrics.active_order_count }}</div>
+        <div class="muted">不含已取消订单</div>
+    </div>
+    <div class="card">
+        <div class="muted">待月结金额</div>
+        <div class="metric-value">{{ format_money(metrics.pending_billing_amount) }}</div>
+        <div class="muted">已交付但未出账订单</div>
+    </div>
+    <div class="card">
+        <div class="muted">{{ current_month }} 已出账</div>
+        <div class="metric-value">{{ format_money(metrics.current_month_statement_total) }}</div>
+        <div class="muted">本月已生成对账单总额</div>
+    </div>
+</div>
+
+<div class="grid grid-2">
+    <div class="card">
+        <div class="toolbar">
+            <div>
+                <h2>最近订单</h2>
+                <div class="muted">关注刚交付、待月结的订单。</div>
+            </div>
+            <a class="button secondary" href="{{ url_for('orders') }}">查看全部</a>
+        </div>
+        {% if recent_orders %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>客户</th>
+                            <th>项目</th>
+                            <th>金额</th>
+                            <th>订单状态</th>
+                            <th>账单</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for order in recent_orders %}
+                            <tr>
+                                <td>
+                                    <strong>{{ order.customer_name }}</strong><br>
+                                    <span class="muted">{{ order.customer_code }}</span>
+                                </td>
+                                <td>
+                                    {{ order.item_name }}<br>
+                                    <span class="muted">交付：{{ order.delivery_date or '未交付' }}</span>
+                                </td>
+                                <td>{{ format_money(order.quantity * order.unit_price) }}</td>
+                                <td><span class="tag">{{ order_status_labels[order.status] }}</span></td>
+                                <td>
+                                    {% if order.billing_month %}
+                                        <span class="tag success">{{ order.billing_month }} / {{ statement_status_labels[order.statement_status] }}</span>
+                                    {% else %}
+                                        <span class="tag warning">未出账</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty">还没有订单，先去录入一笔客户订单。</div>
+        {% endif %}
+    </div>
+
+    <div class="card">
+        <div class="toolbar">
+            <div>
+                <h2>最近对账单</h2>
+                <div class="muted">月结账单生成后可继续跟进发送与结清状态。</div>
+            </div>
+            <a class="button secondary" href="{{ url_for('statements') }}">生成账单</a>
+        </div>
+        {% if open_statements %}
+            <div class="table-wrap">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>月份</th>
+                            <th>客户</th>
+                            <th>订单数</th>
+                            <th>金额</th>
+                            <th>状态</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for statement in open_statements %}
+                            <tr>
+                                <td><a href="{{ url_for('statement_detail', statement_id=statement.id) }}">{{ statement.billing_month }}</a></td>
+                                <td>
+                                    <strong>{{ statement.customer_name }}</strong><br>
+                                    <span class="muted">{{ statement.customer_code }}</span>
+                                </td>
+                                <td>{{ statement.order_count }}</td>
+                                <td>{{ format_money(statement.total_amount) }}</td>
+                                <td><span class="tag success">{{ statement_status_labels[statement.status] }}</span></td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="empty">还没有对账单，交付订单后即可按月份生成月结账单。</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
