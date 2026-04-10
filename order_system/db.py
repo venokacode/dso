@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import sqlite3
-from datetime import datetime
+from datetime import UTC, datetime
 from pathlib import Path
 
 from flask import current_app, g
@@ -78,7 +78,7 @@ CREATE TABLE IF NOT EXISTS statement_orders (
 
 
 def _timestamp() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def get_db() -> sqlite3.Connection:

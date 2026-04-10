@@ -3,7 +3,7 @@ from __future__ import annotations
 import csv
 import io
 from calendar import monthrange
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 from .db import get_db
@@ -24,7 +24,7 @@ STATEMENT_STATUSES = {
 
 
 def timestamp() -> str:
-    return datetime.utcnow().isoformat(timespec="seconds")
+    return datetime.now(UTC).isoformat(timespec="seconds")
 
 
 def today_iso() -> str:
