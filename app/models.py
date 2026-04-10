@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 
 from sqlalchemy import (
     Column,
@@ -15,6 +15,10 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
+def utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
 class Customer(Base):
     __tablename__ = "customers"
 
@@ -23,7 +27,7 @@ class Customer(Base):
     contact_email = Column(String(200), nullable=True)
     credit_terms_days = Column(Integer, nullable=False, default=30)
     billing_cycle = Column(String(20), nullable=False, default="monthly")
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     orders = relationship("Order", back_populates="customer")
     invoices = relationship("Invoice", back_populates="customer")
@@ -37,7 +41,7 @@ class Product(Base):
     name = Column(String(160), nullable=False)
     unit = Column(String(20), nullable=False, default="pcs")
     unit_price = Column(Float, nullable=False)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     order_items = relationship("OrderItem", back_populates="product")
 
@@ -54,7 +58,7 @@ class Order(Base):
     total_amount = Column(Float, nullable=False, default=0.0)
     notes = Column(String(500), nullable=True)
     invoice_id = Column(Integer, ForeignKey("invoices.id"), nullable=True, index=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     customer = relationship("Customer", back_populates="orders")
     items = relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
@@ -87,8 +91,8 @@ class Invoice(Base):
     due_date = Column(Date, nullable=False)
     total_amount = Column(Float, nullable=False, default=0.0)
     status = Column(String(20), nullable=False, default="issued", index=True)
-    settled_at = Column(DateTime, nullable=True)
-    created_at = Column(DateTime, nullable=False, default=datetime.utcnow)
+    settled_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
 
     customer = relationship("Customer", back_populates="invoices")
     orders = relationship("Order", back_populates="invoice")

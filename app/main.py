@@ -1,3 +1,4 @@
+from contextlib import asynccontextmanager
 from datetime import date, timedelta
 from typing import List
 
@@ -19,16 +20,18 @@ from app.schemas import (
     ReceivableSummaryOut,
 )
 
+@asynccontextmanager
+async def lifespan(_: FastAPI):
+    Base.metadata.create_all(bind=engine)
+    yield
+
+
 app = FastAPI(
     title="DSO Monthly Settlement Order System",
     description="Order management for DSO enterprise customers with monthly billing and no online payment.",
     version="0.1.0",
+    lifespan=lifespan,
 )
-
-
-@app.on_event("startup")
-def on_startup() -> None:
-    Base.metadata.create_all(bind=engine)
 
 
 def _gen_order_no(db: Session) -> str:

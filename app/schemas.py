@@ -1,7 +1,7 @@
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class CustomerCreate(BaseModel):
@@ -18,8 +18,7 @@ class CustomerOut(BaseModel):
     billing_cycle: str
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class ProductCreate(BaseModel):
@@ -37,8 +36,7 @@ class ProductOut(BaseModel):
     unit_price: float
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderItemCreate(BaseModel):
@@ -60,8 +58,7 @@ class OrderItemOut(BaseModel):
     unit_price: float
     line_total: float
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class OrderOut(BaseModel):
@@ -77,8 +74,7 @@ class OrderOut(BaseModel):
     created_at: datetime
     items: List[OrderItemOut]
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InvoiceOut(BaseModel):
@@ -93,8 +89,7 @@ class InvoiceOut(BaseModel):
     settled_at: Optional[datetime]
     created_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class MarkInvoiceSettledIn(BaseModel):
